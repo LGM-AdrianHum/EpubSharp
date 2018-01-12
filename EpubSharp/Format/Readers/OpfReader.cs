@@ -27,6 +27,7 @@ namespace EpubSharp.Format.Readers
 
             var package = new OpfDocument
             {
+                UniqueIdentifier = (string) xml.Root.Attribute(OpfDocument.Attributes.UniqueIdentifier),
                 EpubVersion = epubVersion,
                 Metadata = new OpfMetadata
                 {
@@ -99,7 +100,7 @@ namespace EpubSharp.Format.Readers
                     Toc = spine?.Attribute(OpfSpine.Attributes.Toc)?.Value
                 }
             };
-            
+
             return package;
         }
 

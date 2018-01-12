@@ -23,7 +23,14 @@ namespace EpubSharp
 
         public EpubWriter()
         {
-            var opf = new OpfDocument { EpubVersion = EpubVersion.Epub3 };
+            var opf = new OpfDocument
+            {
+                UniqueIdentifier = Guid.NewGuid().ToString("D"),
+                EpubVersion = EpubVersion.Epub3
+            };
+
+            opf.UniqueIdentifier = Constants.DefaultOpfUniqueIdentifier;
+            opf.Metadata.Identifiers.Add(new OpfMetadataIdentifier { Id = Constants.DefaultOpfUniqueIdentifier, Scheme = "uuid", Text = Guid.NewGuid().ToString("D") });
             opf.Metadata.Dates.Add(new OpfMetadataDate { Text = DateTimeOffset.UtcNow.ToString("o") });
             opf.Manifest.Items.Add(new OpfManifestItem { Id = "ncx", Href = "toc.ncx", MediaType = ContentType.ContentTypeToMimeType[EpubContentType.DtbookNcx] });
             opf.Spine.Toc = "ncx";
@@ -184,15 +191,15 @@ namespace EpubSharp
             format.Opf.Metadata.Titles.Add(title);
         }
 
-        public EpubChapter AddChapter(string title, string html)
+        public EpubChapter AddChapter(string title, string html, string fileId = null)
         {
             if (string.IsNullOrWhiteSpace(title)) throw new ArgumentNullException(nameof(title));
             if (html == null) throw new ArgumentNullException(nameof(html));
 
-            var fileId = Guid.NewGuid().ToString("N");
+            fileId = fileId ?? Guid.NewGuid().ToString("N");
             var file = new EpubTextFile
             {
-                FileName = fileId + ".xhtml",
+                FileName = fileId + ".html",
                 TextContent = html,
                 ContentType = EpubContentType.Xhtml11
             };
@@ -207,7 +214,7 @@ namespace EpubSharp
             };
             format.Opf.Manifest.Items.Add(manifestItem);
 
-            var spineItem = new OpfSpineItemRef { IdRef = manifestItem.Id };
+            var spineItem = new OpfSpineItemRef { IdRef = manifestItem.Id, Linear = true };
             format.Opf.Spine.ItemRefs.Add(spineItem);
 
             FindNavTocOl()?.Add(new XElement(NavElements.Li, new XElement(NavElements.A, new XAttribute("href", file.FileName), title)));
@@ -222,6 +229,7 @@ namespace EpubSharp
 
             return new EpubChapter
             {
+                Id = fileId,
                 Title = title,
                 FileName = file.FileName
             };
@@ -327,6 +335,14 @@ namespace EpubSharp
             };
             coverItem.Properties.Add(OpfManifest.ManifestItemCoverImageProperty);
             format.Opf.Manifest.Items.Add(coverItem);
+        }
+
+        public byte[] Write()
+        {
+            var stream = new MemoryStream();
+            Write(stream);
+            stream.Seek(0, SeekOrigin.Begin);
+            return stream.ReadToEnd();
         }
         
         public void Write(string filename)
